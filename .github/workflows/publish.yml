@@ -72,6 +72,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/debs"
           gh release download "$TAG" --repo "$SOURCE" --dir "$RUNNER_TEMP/debs" --pattern '*.deb' --pattern SHA256SUMS
           cd "$RUNNER_TEMP/debs"
+          # GitHub stores an uploaded file's ~ as a dot, so a pre-release's
+          # tak3-node_1.1.0~rc.1_amd64.deb downloads as tak3-node_1.1.0.rc.1_amd64.deb.
+          # Give each file back the name SHA256SUMS lists, the package's own,
+          # before checking it.
+          while read -r _ name; do
+            got=${name//\~/.}
+            if [ "$got" != "$name" ] && [ -f "$got" ]; then mv -- "$got" "$name"; fi
+          done < SHA256SUMS
           ls ./*.deb >/dev/null
           sha256sum --check --ignore-missing SHA256SUMS
 
