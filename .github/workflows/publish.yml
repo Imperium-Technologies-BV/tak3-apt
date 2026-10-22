@@ -1,0 +1,122 @@
+# Signs one tak3 release into this apt repository.
+#
+# This repository is public, and this is the only place the signing key
+# lives: in the "apt" environment, which waits for the owner's approval before
+# the job can see it. The private repository where tak3 is built holds no
+# signing material; its release workflow only asks for this one to run (with
+# a token that can start workflows here and do nothing else), and anyone can
+# also start it by hand from Actions › publish › Run workflow.
+#
+# What it does, after approval: downloads the release's packages from the
+# private repository (a read-only token), checks them against the release's
+# own SHA256SUMS, adds them to the suite (stable, or testing for a
+# pre-release), signs, and replaces the gh-pages branch — which GitHub Pages
+# serves — with one commit. This branch keeps only this file, the script and
+# the README; the packages never enter its history.
+#
+# Settings this needs, all in the "apt" environment (Settings › Environments):
+#   required reviewer   the owner; deployment branches: main only
+#   APT_SIGNING_KEY     the armoured private key (gpg --armor --export-secret-keys)
+#   APT_SIGNING_PASSPHRASE  its passphrase, if it has one
+#   RELEASES_TOKEN      fine-grained token: Contents read-only on the private repository
+# and as a repository variable:
+#   APT_URL             where Pages serves this, e.g. https://apt.example.com
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v1.2.0 or v1.2.0-beta.1"
+        required: true
+      source:
+        description: "Repository the release is in"
+        required: true
+
+permissions:
+  contents: write
+
+# One at a time: two releases must not both rewrite gh-pages at once.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: apt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Check the request
+        env:
+          TAG: ${{ inputs.tag }}
+          SOURCE: ${{ inputs.source }}
+        run: |
+          [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] \
+            || { echo "::error::$TAG is not a release tag"; exit 1; }
+          [[ $SOURCE =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] \
+            || { echo "::error::$SOURCE is not a repository"; exit 1; }
+
+      - name: Fetch the release and check it
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          SOURCE: ${{ inputs.source }}
+        run: |
+          [ "$(gh release view "$TAG" --repo "$SOURCE" --json isDraft --jq .isDraft)" = false ] \
+            || { echo "::error::$TAG is not a published release in $SOURCE"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/debs"
+          gh release download "$TAG" --repo "$SOURCE" --dir "$RUNNER_TEMP/debs" --pattern '*.deb' --pattern SHA256SUMS
+          cd "$RUNNER_TEMP/debs"
+          ls ./*.deb >/dev/null
+          sha256sum --check --ignore-missing SHA256SUMS
+
+      - name: Sign and publish
+        env:
+          TAG: ${{ inputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+          APT_URL: ${{ vars.APT_URL }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_KEY_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=${TAG#v}
+          SUITE=stable
+          [[ $VERSION == *-* ]] && SUITE=testing
+          # Two releases back on stable, so a bad one can be undone with
+          # apt install tak3-node=<previous>; one on testing. Each release is
+          # about 260 MB, and Pages stops at 1 GB.
+          KEEP=2
+          [ "$SUITE" = testing ] && KEEP=1
+          sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev apt-utils >/dev/null
+
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          printf '%s\n' "$APT_SIGNING_KEY" | gpg --batch --quiet --import
+          APT_KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
+          [ -n "$APT_KEY_ID" ] || { echo "::error::APT_SIGNING_KEY holds no secret key"; exit 1; }
+          export APT_KEY_ID
+          OWNER=${REPOSITORY%%/*}
+          export APT_URL=${APT_URL:-https://${OWNER,,}.github.io/${REPOSITORY#*/}}
+
+          # What is published now, or nothing on the first release.
+          SITE="$RUNNER_TEMP/site"
+          git clone --quiet --depth 1 --branch gh-pages \
+            "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git" "$SITE" 2>/dev/null \
+            || { mkdir -p "$SITE" && git -C "$SITE" init --quiet -b gh-pages \
+                 && git -C "$SITE" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git"; }
+          bash apt-repo.sh "$SITE" "$SUITE" "$KEEP" "$RUNNER_TEMP"/debs/*.deb
+          rm -rf "$GNUPGHOME"
+
+          cd "$SITE"
+          git config user.name "tak3 release"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --quiet --orphan publish
+          git add -A
+          git commit --quiet -m "tak3 $VERSION ($SUITE)"
+          git push --quiet --force origin publish:gh-pages
+          echo "published tak3 $VERSION to $APT_URL ($SUITE)"
