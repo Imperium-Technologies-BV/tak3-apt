@@ -18,7 +18,8 @@
 #   required reviewer   the owner; deployment branches: main only
 #   APT_SIGNING_KEY     the armoured private key (gpg --armor --export-secret-keys)
 #   APT_SIGNING_PASSPHRASE  its passphrase, if it has one
-#   RELEASES_TOKEN      fine-grained token: Contents read-only on the private repository
+#   RELEASES_TOKEN      fine-grained token: Contents read-only on the private repository,
+#                       made for that repository's owner (the organisation)
 # and as a repository variable:
 #   APT_URL             where Pages serves this, e.g. https://apt.example.com
 name: publish
