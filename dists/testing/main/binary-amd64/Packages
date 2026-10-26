@@ -1,0 +1,39 @@
+Package: tak3-console
+Version: 1.0.2~rc.4
+Architecture: amd64
+Maintainer: tak3 packaging <packages@tak3.invalid>
+Installed-Size: 190950
+Depends: adduser, ca-certificates, curl, iproute2, jq, openssl
+Recommends: uuid-runtime
+Suggests: tailscale
+Filename: pool/testing/main/tak3-console_1.0.2~rc.4_amd64.deb
+Size: 68273120
+MD5sum: 2109c4d54f1958a92b62076ad7f7926b
+SHA1: bb4790bd88d065717c580637420bb7431a1e4570
+SHA256: 08a8f5ce316f7ae299d43678bcd20a05e9f5a334d3a98c358f3da779f74ff96e
+Section: net
+Priority: optional
+Homepage: https://tak3.io
+Description: tak3 console: one page that watches and runs a fleet of tak3 nodes.
+ It carries its own Java runtime. After installing: sudo tak3-console-setup
+
+Package: tak3-node
+Version: 1.0.2~rc.4
+Architecture: amd64
+Maintainer: tak3 packaging <packages@tak3.invalid>
+Installed-Size: 185947
+Depends: acl, adduser, ca-certificates, curl, iproute2, jq, openssl, unzip
+Recommends: uuid-runtime, sudo
+Suggests: docker.io
+Filename: pool/testing/main/tak3-node_1.0.2~rc.4_amd64.deb
+Size: 63807866
+MD5sum: a3869509bc21b57f14500337e43a1c77
+SHA1: 6a5aff0900f32b751aaab478ac3006d651013a6c
+SHA256: 77490448fff5db7bd175b391731720d24742de76207036a7a3bbbb4088d40184
+Section: net
+Priority: optional
+Homepage: https://tak3.io
+Description: tak3 node: runs beside MediaMTX or Nimble Streamer on a streaming server
+ and gives the tak3 console its status, recordings, transcoders and settings.
+ It carries its own Java runtime. After installing: sudo tak3-node-setup
+

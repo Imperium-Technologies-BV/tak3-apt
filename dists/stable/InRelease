@@ -1,0 +1,42 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Architectures: amd64 arm64
+Codename: stable
+Components: main
+Date: Sat, 24 Oct 2026 16:32:00 +0000
+Description: tak3 console and node (stable)
+Label: tak3
+Origin: tak3
+Suite: stable
+MD5Sum:
+ c3e38681d7afc9461f757384ddff2d3c             2400 Release
+ 09189cdee350b485b57bc95a71a70114             3038 main/binary-amd64/Packages
+ ba632dfc44a57fe1e9808c3627fc47ab              962 main/binary-amd64/Packages.gz
+ 488b65d310c7ac76c20cb97f26724766             3038 main/binary-arm64/Packages
+ f089aee49cff82da67ca59a7b1952f6d              960 main/binary-arm64/Packages.gz
+SHA1:
+ 05503ae9c0f42ff211b44dfe6be7735ca10516de             2400 Release
+ d96b3a063f5c36865be22c23aad0d2e4e7b25a55             3038 main/binary-amd64/Packages
+ 786cebcedb3e4f3a52c31977f26af8d933b3f979              962 main/binary-amd64/Packages.gz
+ 03e506557f317b9f6d8ee5cba8dab1b2693dff3c             3038 main/binary-arm64/Packages
+ 2bbb7935b6f5ee020cb2405a19ec3991b583958f              960 main/binary-arm64/Packages.gz
+SHA256:
+ d25d3d0a78617b1f3ee3a6bf13da0914ae670ce1fd73ab49d9eb5fcb41da9374             2400 Release
+ 9b3cad330fff1c42f693702d3da6d0808db98172a9ae179a196bb98bd8217600             3038 main/binary-amd64/Packages
+ a8f699e0a7b1129d61c7a53d800ce1d08bb7fcbd39047dc5a5232d16c6836547              962 main/binary-amd64/Packages.gz
+ 9ae018809f895a18bf4dc59ed6516affa00dfa6ee8d118f3bf06663aa9e9c2c0             3038 main/binary-arm64/Packages
+ c70e8e065fdb3f38d856c77ffe7433720c7b45e60f6ed83fe5526f121e9578e0              960 main/binary-arm64/Packages.gz
+SHA512:
+ a1f33c6e9d533b2dc631439e68e1b6c88ae7f76a57ef4d3247cbe579d9b85ceea890e4ddd88e2f443622324a71c083413ccf851d743ff52501669640062801d5             2400 Release
+ 6f7ed2048151afd91bc755e1b37d209342f0d4add2a8ddb535560fb8006b6944f1c61e6d67f912fe0977a80d48b9ecabe13c8a1003512556c80997511767fdce             3038 main/binary-amd64/Packages
+ 02f0ed99665890e2864072dab9f16ecc16d3c180b3283c9e192212b97c332edb762f2611067a3fd968edca6104609efa8028acc684964c6995a5a2af39d3c977              962 main/binary-amd64/Packages.gz
+ 8e21654a845aef8dcbd30840a39d4f285bfe3b3675419fa4cc5626d3f4d01814c7c21dc23636a4af1484ea273da9e4d29390f727df2268f74852d6a40285a442             3038 main/binary-arm64/Packages
+ 68cba0925dabf3556cc7fd26e22859b5616468cd0d12dcf4888ce313072e8a95e808de00d0db8925bb1392a4da69c79910b1befb3cac1e97b6009aea91fe8bfa              960 main/binary-arm64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iHUEARYKAB0WIQSVzsfpMAmPHNSc8VVwNnPjEkdGJAUCatzdgAAKCRBwNnPjEkdG
+JIKVAQCf/5GdGAsL9qw42D5Op8OZlYTgh+/SjHbqrQKWg2pl/QEAgJFjHEFqQLeQ
+0DBzDhaNLAS3tBBi+MvPv/Bg687yJgc=
+=ndhg
+-----END PGP SIGNATURE-----
