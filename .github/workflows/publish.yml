@@ -14,7 +14,8 @@
 # serves — with one commit. This branch keeps only this file, the script and
 # the README; the packages never enter its history.
 #
-# Settings this needs, all in the "apt" environment (Settings › Environments):
+# Settings this needs, in the "apt" environment (Settings › Environments), and
+# the same secrets in "apt-testing" (no reviewer; deployment branches: main):
 #   required reviewer   the owner; deployment branches: main only
 #   APT_SIGNING_KEY     the armoured private key (gpg --armor --export-secret-keys)
 #   APT_SIGNING_PASSPHRASE  its passphrase, if it has one
@@ -44,7 +45,11 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: apt
+    # A pre-release (a tag with a dash) goes to the testing suite through the
+    # "apt-testing" environment, which has the same secrets but no reviewer:
+    # release candidates reach the test box without a tap. A stable release
+    # still waits for the owner in "apt" (Tap 3).
+    environment: ${{ contains(inputs.tag, '-') && 'apt-testing' || 'apt' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
