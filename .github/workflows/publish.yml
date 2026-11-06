@@ -10,9 +10,9 @@
 # What it does, after approval: downloads the release's packages from the
 # private repository (a read-only token), checks them against the release's
 # own SHA256SUMS, adds them to the suite (stable, or testing for a
-# pre-release), signs, and replaces the gh-pages branch — which GitHub Pages
-# serves — with one commit. This branch keeps only this file, the script and
-# the README; the packages never enter its history.
+# pre-release), signs, and publishes to the host or hosts APT_PUBLISH_TO names
+# (below). This branch keeps only the workflows, the scripts and the docs; the
+# packages never enter its history.
 #
 # Settings this needs, in the "apt" environment (Settings › Environments), and
 # the same secrets in "apt-testing" (no reviewer; deployment branches: main):
@@ -20,8 +20,17 @@
 #   APT_SIGNING_KEY     the armoured private key (gpg --armor --export-secret-keys)
 #   APT_SIGNING_PASSPHRASE  its passphrase, if it has one
 #   RELEASES_TOKEN      fine-grained token: Contents read-only on the private repository
-# and as a repository variable:
-#   APT_URL             where Pages serves this, e.g. https://apt.example.com
+# and as repository variables:
+#   APT_URL             where customers reach this, e.g. https://apt.example.com
+#   APT_PUBLISH_TO      pages (or unset): the gh-pages branch, as it always was
+#                       both: the S3 bucket is the copy that counts; gh-pages
+#                       gets the same files, so Pages can take over again
+#                       s3: the S3 bucket only
+#   APT_S3_BUCKET, APT_S3_REGION, APT_CDN_URL  see s3.sh
+#   APT_AWS_ROLE        the role this job takes on, with no stored password:
+#                       AWS trusts GitHub's word that this is the "apt" or
+#                       "apt-testing" environment of this repository
+# MOVING-HOST.md has the move from one to the next, and back.
 name: publish
 
 on:
@@ -36,8 +45,10 @@ on:
 
 permissions:
   contents: write
+  id-token: write # only for the AWS role; grants nothing on GitHub
 
-# One at a time: two releases must not both rewrite gh-pages at once.
+# One at a time: two releases must not both rewrite what is published at once.
+# The mirror workflow shares this group.
 concurrency:
   group: publish
   cancel-in-progress: false
@@ -60,7 +71,12 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
           SOURCE: ${{ inputs.source }}
+          PUBLISH_TO: ${{ vars.APT_PUBLISH_TO }}
         run: |
+          case "$PUBLISH_TO" in
+            ""|pages|both|s3) ;;
+            *) echo "::error::APT_PUBLISH_TO is $PUBLISH_TO; it must be pages, both or s3"; exit 1 ;;
+          esac
           [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]] \
             || { echo "::error::$TAG is not a release tag"; exit 1; }
           [[ $SOURCE =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] \
@@ -88,24 +104,54 @@ jobs:
           ls ./*.deb >/dev/null
           sha256sum --check --ignore-missing SHA256SUMS
 
-      - name: Sign and publish
+      - name: Take on the AWS role
+        if: ${{ vars.APT_PUBLISH_TO == 'both' || vars.APT_PUBLISH_TO == 's3' }}
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.APT_AWS_ROLE }}
+          aws-region: ${{ vars.APT_S3_REGION }}
+
+      - name: Fetch what is published now
+        env:
+          REPOSITORY: ${{ github.repository }}
+          PUBLISH_TO: ${{ vars.APT_PUBLISH_TO }}
+          GH_TOKEN: ${{ github.token }}
+          APT_S3_BUCKET: ${{ vars.APT_S3_BUCKET }}
+        run: |
+          SITE="$RUNNER_TEMP/site"
+          if [ "$PUBLISH_TO" = both ] || [ "$PUBLISH_TO" = s3 ]; then
+            bash s3.sh pull "$SITE" "$RUNNER_TEMP/site.before"
+            # An empty bucket is one nobody filled, not a repository with nothing
+            # in it: publishing would hide every release customers have.
+            ls "$SITE"/dists/*/InRelease >/dev/null 2>&1 \
+              || { echo "::error::the bucket holds no repository; run the mirror workflow first"; exit 1; }
+          else
+            # Or nothing on the first release.
+            git clone --quiet --depth 1 --branch gh-pages \
+              "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git" "$SITE" 2>/dev/null \
+              || { mkdir -p "$SITE" && git -C "$SITE" init --quiet -b gh-pages \
+                   && git -C "$SITE" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git"; }
+          fi
+
+      - name: Sign
+        id: sign
         env:
           TAG: ${{ inputs.tag }}
           REPOSITORY: ${{ github.repository }}
+          PUBLISH_TO: ${{ vars.APT_PUBLISH_TO }}
           APT_URL: ${{ vars.APT_URL }}
           APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
           APT_KEY_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=${TAG#v}
           SUITE=stable
           [[ $VERSION == *-* ]] && SUITE=testing
           # Two releases back on stable, so a bad one can be undone with
           # apt install tak3-node=<previous>; one on testing. Each release is
-          # about 260 MB, and Pages stops at 1 GB.
+          # about 260 MB, and Pages stops at 1 GB while it is still in use.
           KEEP=2
           [ "$SUITE" = testing ] && KEEP=1
-          sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev apt-utils >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev apt-utils gpgv >/dev/null
 
           GNUPGHOME=$(mktemp -d)
           export GNUPGHOME
@@ -116,20 +162,52 @@ jobs:
           OWNER=${REPOSITORY%%/*}
           export APT_URL=${APT_URL:-https://${OWNER,,}.github.io/${REPOSITORY#*/}}
 
-          # What is published now, or nothing on the first release.
           SITE="$RUNNER_TEMP/site"
-          git clone --quiet --depth 1 --branch gh-pages \
-            "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git" "$SITE" 2>/dev/null \
-            || { mkdir -p "$SITE" && git -C "$SITE" init --quiet -b gh-pages \
-                 && git -C "$SITE" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git"; }
+          if [ "$PUBLISH_TO" = both ] || [ "$PUBLISH_TO" = s3 ]; then
+            bash s3.sh verify "$SITE"
+          fi
           bash apt-repo.sh "$SITE" "$SUITE" "$KEEP" "$RUNNER_TEMP"/debs/*.deb
           rm -rf "$GNUPGHOME"
 
-          cd "$SITE"
+      # Each host gets its copy whatever happened to the other: while both are
+      # in use, a failure at one must not leave the other a release behind. The
+      # job still fails, so it gets seen and re-run.
+      - name: Upload to S3
+        if: ${{ !cancelled() && steps.sign.outcome == 'success' && (vars.APT_PUBLISH_TO == 'both' || vars.APT_PUBLISH_TO == 's3') }}
+        env:
+          TAG: ${{ inputs.tag }}
+          APT_URL: ${{ vars.APT_URL }}
+          APT_S3_BUCKET: ${{ vars.APT_S3_BUCKET }}
+          APT_CDN_URL: ${{ vars.APT_CDN_URL }}
+        run: |
+          bash s3.sh push "$RUNNER_TEMP/site" "$RUNNER_TEMP/site.before"
+          echo "published tak3 ${TAG#v} to the bucket, $APT_URL once the name points there"
+
+      - name: Replace the gh-pages branch
+        if: ${{ !cancelled() && steps.sign.outcome == 'success' && vars.APT_PUBLISH_TO != 's3' }}
+        env:
+          TAG: ${{ inputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+          PUBLISH_TO: ${{ vars.APT_PUBLISH_TO }}
+          APT_URL: ${{ vars.APT_URL }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=${TAG#v}
+          SUITE=stable
+          [[ $VERSION == *-* ]] && SUITE=testing
+          cd "$RUNNER_TEMP/site"
+          if [ "$PUBLISH_TO" = both ]; then
+            # These files came from the bucket, which has no git and no CNAME.
+            # Pages drops its custom domain if the CNAME file goes.
+            git init --quiet -b gh-pages
+            git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git"
+            host=${APT_URL#*://}
+            printf '%s' "${host%%/*}" > CNAME
+          fi
           git config user.name "tak3 release"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --quiet --orphan publish
           git add -A
           git commit --quiet -m "tak3 $VERSION ($SUITE)"
           git push --quiet --force origin publish:gh-pages
-          echo "published tak3 $VERSION to $APT_URL ($SUITE)"
+          echo "published tak3 $VERSION to gh-pages ($SUITE)"
