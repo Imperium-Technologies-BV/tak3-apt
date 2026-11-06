@@ -1,0 +1,57 @@
+# Copies what gh-pages holds into the S3 bucket, without signing
+# anything: the first fill before the move, and again if the bucket fell behind
+# while APT_PUBLISH_TO was pages. It takes the signing key nowhere, so it needs
+# no approval, and from main only: the "apt-testing" environment allows nothing
+# else. See MOVING-HOST.md.
+#
+# With APT_PUBLISH_TO at both or s3 the bucket is the copy that counts and
+# gh-pages may be older, so this refuses to run.
+name: mirror
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # only for the AWS role; grants nothing on GitHub
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    environment: apt-testing
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Take on the AWS role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.APT_AWS_ROLE }}
+          aws-region: ${{ vars.APT_S3_REGION }}
+
+      - name: Copy gh-pages to the bucket
+        env:
+          REPOSITORY: ${{ github.repository }}
+          PUBLISH_TO: ${{ vars.APT_PUBLISH_TO }}
+          APT_S3_BUCKET: ${{ vars.APT_S3_BUCKET }}
+          APT_CDN_URL: ${{ vars.APT_CDN_URL }}
+        run: |
+          case "$PUBLISH_TO" in
+            ""|pages) ;;
+            *) echo "::error::APT_PUBLISH_TO is $PUBLISH_TO: the bucket is ahead of gh-pages, and this would undo it"; exit 1 ;;
+          esac
+          PAGES="$RUNNER_TEMP/pages"
+          SITE="$RUNNER_TEMP/site"
+          git clone --quiet --depth 1 --branch gh-pages "https://github.com/${REPOSITORY}.git" "$PAGES"
+          ls "$PAGES"/dists/*/InRelease >/dev/null
+          bash s3.sh pull "$SITE" "$RUNNER_TEMP/site.before"
+          find "$SITE" -mindepth 1 -delete
+          (cd "$PAGES" && tar --exclude=.git -cf - .) | tar -xf - -C "$SITE"
+          bash s3.sh push "$SITE" "$RUNNER_TEMP/site.before"
+          echo "the bucket now holds what gh-pages holds"

@@ -2,8 +2,11 @@
 
 The signed apt repository customers install tak3 from. This folder is the
 whole of a separate **public** repository (`tak3-apt`): copy it there as the
-`main` branch. GitHub Pages serves the `gh-pages` branch, which
-`.github/workflows/publish.yml` writes.
+`main` branch. `.github/workflows/publish.yml` signs and publishes, to where the
+`APT_PUBLISH_TO` variable says: the `gh-pages` branch, which GitHub Pages serves,
+or an S3 bucket behind CloudFront, or both while moving from the first to the
+second. [MOVING-HOST.md](MOVING-HOST.md) is that move, step by step, and
+the way back. The address customers use and the signing key do not change.
 
 Why separate, and why public: the signing key every customer's apt trusts
 lives only here, in an environment that waits for the owner's approval. On a
@@ -26,8 +29,8 @@ all — its release workflow can only ask this one to run.
      the private tak3 repository and nothing else.
 4. **Settings › Variables › `APT_URL`**: the address customers use, ideally your
    own domain (`https://apt.example.com`) so the host can change later.
-5. **Settings › Pages**: deploy from branch `gh-pages`, folder `/`, custom domain
-   as above.
+5. **The host.** Pages: Settings › Pages, deploy from branch `gh-pages`, folder
+   `/`, custom domain as above. S3 and CloudFront: MOVING-HOST.md, steps 2 to 4.
 6. **In the private tak3 repository**:
    - Variable `APT_REPOSITORY` = `<owner>/tak3-apt` — this switches publishing on.
    - Secret `APT_TRIGGER_TOKEN` — a fine-grained token with **Actions: read and
@@ -41,3 +44,16 @@ makes the GitHub Release, then asks here. **Approve** the waiting run under
 Actions › publish, and the packages are signed and served within minutes.
 A pre-release tag (`v1.2.0-rc.1`) goes to the `testing` suite instead of
 `stable`.
+
+Nothing an index names is ever missing: packages go up first, then the indexes
+with `InRelease` last, and only then do versions past `KEEP` go. Before signing,
+the job checks what it fetched from the bucket against the last signature, so a
+file changed there is refused and not signed again.
+
+## The files
+
+- `apt-repo.sh` adds packages to the repository and signs it, on any host.
+- `s3.sh` fetches the bucket, verifies it and sends back what changed.
+- `aws/hosting.yaml` is the bucket, CloudFront and the publish role.
+- `.github/workflows/mirror.yml` copies `gh-pages` into the bucket, for the move.
+- `test-client.sh <url>` tries a repository from a throwaway apt client in docker.

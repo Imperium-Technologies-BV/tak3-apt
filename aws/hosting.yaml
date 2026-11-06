@@ -1,0 +1,193 @@
+# Everything the apt repository needs in AWS: a private bucket, CloudFront in
+# front of it, and the role the publish workflow takes on. See MOVING-HOST.md.
+#
+# The first deployment has no certificate and answers only at its cloudfront.net
+# address. Deploying again with CertificateArn adds apt.tak3.io.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: tak3 apt repository hosting
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: tak3-apt-repository
+  Domain:
+    Type: String
+    Default: apt.tak3.io
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: The certificate for Domain, in us-east-1. Empty until there is one.
+  Repository:
+    Type: String
+    Default: Imperium-Technologies-BV/tak3-apt
+  AlertEmail:
+    Type: String
+    Description: Who hears about it when the month's bill passes MonthlyAlertUsd.
+  MonthlyAlertUsd:
+    Type: Number
+    Default: 5
+
+Conditions:
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    # The repository outlives the stack: deleting the stack must not delete it.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      # A changed or deleted file can be got back, for three months.
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: old-versions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 90
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+  OriginAccess:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${BucketName}-origin"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: tak3 apt repository
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        # Edges in Europe and North America.
+        PriceClass: PriceClass_100
+        Aliases: !If [HasCertificate, [!Ref Domain], !Ref AWS::NoValue]
+        ViewerCertificate: !If
+          - HasCertificate
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: bucket
+            DomainName: !GetAtt Bucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccess.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        # Packages and the key never change under the same name: CachingOptimized.
+        DefaultCacheBehavior:
+          TargetOriginId: bucket
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          Compress: false
+        # The indexes change at every release and must show at once: apt, the
+        # console's update check and the in-testing job read them. CachingDisabled.
+        CacheBehaviors:
+          - PathPattern: dists/*
+            TargetOriginId: bucket
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            Compress: false
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CloudFrontReads
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            # ListBucket so a missing file is a 404 and not a 403.
+            Action: [s3:GetObject, s3:ListBucket]
+            Resource:
+              - !GetAtt Bucket.Arn
+              - !Sub "${Bucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  GitHub:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  PublishRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: tak3-apt-publish
+      MaxSessionDuration: 3600
+      # Only the repository's two environments, which allow only main.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHub
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub:
+                  - !Sub "repo:${Repository}:environment:apt"
+                  - !Sub "repo:${Repository}:environment:apt-testing"
+      # No version permissions: a stolen session cannot erase the history.
+      Policies:
+        - PolicyName: the-bucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt Bucket.Arn
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject, s3:AbortMultipartUpload]
+                Resource: !Sub "${Bucket.Arn}/*"
+
+  BillAlert:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: tak3-apt
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref MonthlyAlertUsd
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
+Outputs:
+  Bucket:
+    Value: !Ref Bucket
+  Role:
+    Value: !GetAtt PublishRole.Arn
+  CloudFrontAddress:
+    Value: !GetAtt Distribution.DomainName
