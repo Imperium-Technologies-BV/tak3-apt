@@ -101,7 +101,7 @@ cat > index.html <<EOF
 <h1>tak3 packages</h1>
 <p>For Ubuntu 22.04, Ubuntu 24.04 and Debian 12. Add the repository once:</p>
 <pre>curl -fsSL $APT_URL/tak3-archive-keyring.gpg | sudo tee /usr/share/keyrings/tak3-archive-keyring.gpg &gt;/dev/null
-echo "deb [signed-by=/usr/share/keyrings/tak3-archive-keyring.gpg] $APT_URL stable main" | sudo tee /etc/apt/sources.list.d/tak3.list
+echo "deb [arch=\$(dpkg --print-architecture) signed-by=/usr/share/keyrings/tak3-archive-keyring.gpg] $APT_URL stable main" | sudo tee /etc/apt/sources.list.d/tak3.list
 sudo apt update</pre>
 <p>On a streaming server:</p>
 <pre>sudo apt install tak3-node
