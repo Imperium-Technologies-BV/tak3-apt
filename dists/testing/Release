@@ -1,0 +1,32 @@
+Architectures: amd64 arm64
+Codename: testing
+Components: main
+Date: Sun, 22 Nov 2026 21:23:23 +0000
+Description: tak3 console and node (testing)
+Label: tak3
+Origin: tak3
+Suite: testing
+MD5Sum:
+ 0cfb4664264caef81f45834a0bf5a253             2403 Release
+ 436ce05c7be43c115c78aa471c7d049a             1488 main/binary-amd64/Packages
+ c718d83f4be6c4af257d1ec7ad125f62              729 main/binary-amd64/Packages.gz
+ ee860ef6a04dd72d16f23cd9502b1c08             1488 main/binary-arm64/Packages
+ 36800fa97e3c8908c06a32176f2b12e4              731 main/binary-arm64/Packages.gz
+SHA1:
+ 3afd1cc61eec8bd65ac91eef824685b6c9d6944c             2403 Release
+ 98a51c6ba4cfa91058a36205c8de6d7a1a806528             1488 main/binary-amd64/Packages
+ 9d0d7e85c906606d3441292d5334dfc06604066c              729 main/binary-amd64/Packages.gz
+ f27a676af5c6c22588c21f513f7bca181c539e97             1488 main/binary-arm64/Packages
+ aec63aeccb55aaaaf1215becd3e2c1e7d7a467e0              731 main/binary-arm64/Packages.gz
+SHA256:
+ a605868f70fa704045fbb78a5e87d41b5a6f118117834745c0ed0e35b7a12638             2403 Release
+ cda2966177b3be852fbc93fc4b803f0a275cd47d2ffd12b36f0dacbb7f55d361             1488 main/binary-amd64/Packages
+ 7d84308e7d2b3c19f0daae0d66ad6d1efc5e1499851aa9e2d13bb3ed519c2cb6              729 main/binary-amd64/Packages.gz
+ cb9c45760b84aa06fe1a78116611da19c81e66bb0ee38f0e734fa4208f8bee5c             1488 main/binary-arm64/Packages
+ f26003e7b0b765029261931507dde577de81981656f1e755af9260e5b7e16dc8              731 main/binary-arm64/Packages.gz
+SHA512:
+ 32a304de58ba256892e1020c2bc137150fdec6a5fb3b2d08f767d7aa2d090b24bd92c0e11cf4ebf95c10ae49487fbfdb9c377ebbfd241d9e227429d9df1ee387             2403 Release
+ 9b4579c9c0ef56f62cd30126fea124d848b18dd4aa0a10db62ac8db09a4ed976b4ebd295568a80be80b16ab5b67d3d951b1de595cf1322dc10726a924d2dcd15             1488 main/binary-amd64/Packages
+ 0fcaffb6ba27504f41603d9c46127a9503b9deaf252d1cf403bbb28fe2bcfbb7928b861dc790ae4de56f3260241a893895d7e288ac3f04f7e5f2a19147c22cad              729 main/binary-amd64/Packages.gz
+ 71107ce55287801f883bb0bded0e613f8e4e82b9e111b00df2b872ce3104d492ec01ee4c3b00da0c8f5c6c470db7386202a4280146b4c0e6df7d7fce271cd338             1488 main/binary-arm64/Packages
+ fcd944b5521390fd59c75c5aa42d3fa9389fb058496693f9bddd7e314202df376349fdf8d53d6eb124eb129339642010d5fcc88d5be8b5c98514c8b04f27e394              731 main/binary-arm64/Packages.gz

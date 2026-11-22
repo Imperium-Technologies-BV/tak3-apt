@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>tak3 packages</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 16px}pre{background:#f3f4f6;padding:12px;overflow:auto}</style>
+<h1>tak3 packages</h1>
+<p>For Ubuntu 22.04, Ubuntu 24.04 and Debian 12. Add the repository once:</p>
+<pre>curl -fsSL https://apt.tak3.io/tak3-archive-keyring.gpg | sudo tee /usr/share/keyrings/tak3-archive-keyring.gpg &gt;/dev/null
+echo "deb [signed-by=/usr/share/keyrings/tak3-archive-keyring.gpg] https://apt.tak3.io stable main" | sudo tee /etc/apt/sources.list.d/tak3.list
+sudo apt update</pre>
+<p>On a streaming server:</p>
+<pre>sudo apt install tak3-node
+sudo tak3-node-setup</pre>
+<p>On the console host:</p>
+<pre>sudo apt install tak3-console
+sudo tak3-console-setup</pre>
+<p>Updates arrive with <code>sudo apt upgrade</code>. Pre-releases are in the <code>testing</code> suite instead of <code>stable</code>.</p>

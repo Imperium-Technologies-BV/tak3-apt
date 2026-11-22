@@ -1,0 +1,32 @@
+Architectures: amd64 arm64
+Codename: stable
+Components: main
+Date: Sun, 01 Nov 2026 20:12:52 +0000
+Description: tak3 console and node (stable)
+Label: tak3
+Origin: tak3
+Suite: stable
+MD5Sum:
+ 44b735610ae9a65396bd4c197365d5b2             2400 Release
+ 3b34b0e9461a6b5240ebb7577ea6a985             2985 main/binary-amd64/Packages
+ 7e3e07d892ed075e178092fa9cfdd860              981 main/binary-amd64/Packages.gz
+ f3fd6d07904f996c18a0ab397fe2123a             2985 main/binary-arm64/Packages
+ d0ea6662b07b7c7c3a6828d32db41140              981 main/binary-arm64/Packages.gz
+SHA1:
+ 550449c4d47384c4ac2c0ff5f4dc33c20687eb72             2400 Release
+ 2d357a5a27db299483caffa6206dbbdd3259c3bb             2985 main/binary-amd64/Packages
+ 5a9d845168999df92bdae844710528f631c77e4f              981 main/binary-amd64/Packages.gz
+ 5e1df777197e7b077807164335cdfa79ca1dbca3             2985 main/binary-arm64/Packages
+ af63023521f4bc49d38846d98256149b2b96420d              981 main/binary-arm64/Packages.gz
+SHA256:
+ e302af40407f98bf7de144a29f5e28e325d3ca3570831f8c00350f6d21091127             2400 Release
+ 9e30a0feebde9bea8a23a3412f12e367e57129a883a6cbef5e51bfd6990d99d8             2985 main/binary-amd64/Packages
+ 1a9240f8e883cd3f9cdb382992760b5af0af2c188b61d8f73c520d8e820333ee              981 main/binary-amd64/Packages.gz
+ 3b7c741e447cc7ae10d8b103dac0bd835540c600c3eb13a963c8cfac46ac7832             2985 main/binary-arm64/Packages
+ 3231be22988b3f82da75b0685c4ee5a3af018b18267118a242ac7890c2fa4b6e              981 main/binary-arm64/Packages.gz
+SHA512:
+ 3e6290b46db11ee2c35c15ac556b3d4c411a22687a5bbf928dcdaf1efb9af2ab30705c5884215954910f6ee006630867023a6adbea323ace1bbd7b42e74e4229             2400 Release
+ 9209640789be899a589cfd22b1f467e6427e198eb3f5fa3c9d2dc2b53babaa5faf52696bc4cd34f39daa2d558dd6cce67fdeca2751f93859097b5ca7d97fe6fd             2985 main/binary-amd64/Packages
+ dac1e7349bc3d1cfd49537c56df404f7ba7c12d9f8a2c32774d494a588acf8cc2aaf942b9da39cfc20854b42cbe3c323f91e36797e84f233f72a2c23e4510112              981 main/binary-amd64/Packages.gz
+ 15f92469c37bbf61c7f32fcb1228f6201044d521da456b374d0933fc9990049ba602fbd135768d99da9130d3b0e2ede0b58a4ac5ee557dc0febbdb9d1b916cb6             2985 main/binary-arm64/Packages
+ d0c95d879f166dc329a74f4425b1df230ef111724e7b65a82cbe33be5f9ee00f61a6515180492ba65acc11023a42b6d5a309c1263440b9853721489854ce2fad              981 main/binary-arm64/Packages.gz
